@@ -1,0 +1,75 @@
+using System;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Xml;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        // Fetch XML from ServiceNow Attachment
+        string xmlData = FetchXmlFromServiceNow("attachmentId");
+
+        if (!string.IsNullOrEmpty(xmlData))
+        {
+            // Extract App ID and Server Details from XML
+            Tuple<string, string> appInfo = ExtractAppIdAndServerDetails(xmlData);
+
+            if (appInfo != null)
+            {
+                // Pass App ID and Server Details to CyberArk API
+                string password = PassDetailsToCyberArk(appInfo.Item1, appInfo.Item2);
+
+                Console.WriteLine($"Password: {password}");
+            }
+            else
+            {
+                Console.WriteLine("Failed to extract App ID and Server Details from XML.");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Failed to fetch XML data from ServiceNow.");
+        }
+    }
+
+    static string FetchXmlFromServiceNow(string attachmentId)
+    {
+        string url = $"ServiceNowAPIEndpoint/{attachmentId}";
+        WebClient client = new WebClient();
+        return client.DownloadString(url);
+    }
+
+    static Tuple<string, string> ExtractAppIdAndServerDetails(string xmlData)
+    {
+        XmlDocument doc = new XmlDocument();
+        doc.LoadXml(xmlData);
+
+        string appId = doc.SelectSingleNode("//appId")?.InnerText;
+        string serverDetails = doc.SelectSingleNode("//serverDetails")?.InnerText;
+
+        if (!string.IsNullOrEmpty(appId) && !string.IsNullOrEmpty(serverDetails))
+        {
+            return Tuple.Create(appId, serverDetails);
+        }
+
+        return null;
+    }
+
+    static string PassDetailsToCyberArk(string appId, string serverDetails)
+    {
+        // Construct your request to CyberArk API with the App ID and Server Details
+        // Make a POST request to get the password
+
+        // Example: Making a POST request to a hypothetical CyberArk API
+        string url = "CyberArkAPIEndpoint";
+        string requestBody = $"{{ \"appId\": \"{appId}\", \"serverDetails\": \"{serverDetails}\" }}";
+        byte[] bytes = Encoding.UTF8.GetBytes(requestBody);
+
+        WebClient client = new WebClient();
+        client.Headers[HttpRequestHeader.ContentType] = "application/json";
+        byte[] responseBytes = client.UploadData(url, "POST", bytes);
+        return Encoding.UTF8.GetString(responseBytes);
+    }
+}
