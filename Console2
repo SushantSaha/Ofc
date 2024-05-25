@@ -1,0 +1,97 @@
+
+using System;
+using System.IO;
+using System.Linq;
+using System.Xml.Linq;
+
+namespace ConsoleApp
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string xmlFilePath = "master.xml";
+
+            // Load the XML document
+            XDocument xmlDoc;
+            try
+            {
+                xmlDoc = XDocument.Load(xmlFilePath);
+            }
+            catch (FileNotFoundException)
+            {
+                Console.WriteLine("Error: master.xml not found.");
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading XML file: {ex.Message}");
+                return;
+            }
+
+            // Current date
+            DateTime currentDate = DateTime.Now;
+
+            xmlDoc.Root.Elements("Application")
+                .Where(appNode =>
+                {
+                    DateTime lastResetDate = DateTime.Parse(appNode.Element("lastResetDate").Value);
+                    return (currentDate - lastResetDate).TotalDays >= 350;
+                })
+                .ToList()
+                .ForEach(appNode =>
+                {
+                    // Extract application information
+                    string appId = appNode.Element("applicationId").Value;
+
+                    // Select application for Reset Change submission
+                    SelectApplicationForResetChangeSubmission(appId);
+
+                    // Create tickets
+                    CreateReleaseTicket(appId);
+                    CreateMasterChangeTicket(appId);
+
+                    // Loop through servers and create change tickets
+                    appNode.Element("Servers").Value.Split(',')
+                        .ToList()
+                        .ForEach(server =>
+                        {
+                            CreateChangeTicketForServer(appId, server.Trim());
+                        });
+
+                    // Update the last reset date in the XML with current date
+                    appNode.Element("lastResetDate").Value = currentDate.ToString("MM/dd/yyyy");
+                });
+
+            // Save the changes back to the XML file
+            try
+            {
+                xmlDoc.Save(xmlFilePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving XML file: {ex.Message}");
+            }
+        }
+
+        static void SelectApplicationForResetChangeSubmission(string appId)
+        {
+            Console.WriteLine($"Selected Application ID {appId} for Reset Change submission.");
+        }
+
+        static void CreateReleaseTicket(string appId)
+        {
+            Console.WriteLine($"Created Release ticket for Application ID {appId}.");
+        }
+
+        static void CreateMasterChangeTicket(string appId)
+        {
+            Console.WriteLine($"Created Master Change ticket for Application ID {appId}.");
+        }
+
+        static void CreateChangeTicketForServer(string appId, string server)
+        {
+            Console.WriteLine($"Created Change ticket for Application ID {appId} on Server {server}.");
+        }
+    }
+}
